@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One hour forecast</title>
+    <style>
+      body,#message, #msgHead, #msgText, #forecast {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, Verdana, sans-serif;
+        color: #353734;
+      }
+      #message, #forecast {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: #e7e5e6;
+        display: flex;
+        flex-direction: column;
+      }
+      #message {
+        align-items: center;
+        justify-content: center;
+      }
+      #msgHead {
+        font-size:10vmin;
+        font-weight: bold;
+      }
+      #msgText {
+        font-size:5vmin;
+      }
+      #forecast {
+        justify-content: space-between;
+        display: none;
+      }
+      h1, h3 {
+        background: #353734;
+        color:#f4f4f4;
+      }
+      h1 {
+        margin: 0;
+        padding: 2vmin 0 2vmin 2vmin;
+        font-size: 6vmin;
+        font-weight: bold;
+      }
+      p {
+        margin: 0 0 3vmin 0;
+        padding: 0;
+        font-size:7vmin;
+        text-align: center;
+      }
+      #timer {
+        padding: 0 3vmin 0 3vmin;
+        background-color: #ee0000;
+        color: #f4f4f4;
+      }
+      h3 {
+        margin: 0;
+        padding: 1.3vmin 0 1.3vmin 0;
+        text-align: center;
+        font-size:4.5vmin;
+        font-weight: normal;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="message">
+      <h2 id="msgHead">BINANCE</h2>
+      <p id="msgText">Connection .....</p>
+    </div>
+    <div id="forecast">
+      <h1>BINANCE > spot > <span style="color:#ee0000;">BTC/USDT<span/></h1>
+      <div>
+        <p>In <span id="timer">00:00</span></p>
+        <p>Bitcoin price will be:</p>
+        <p id="price">999 999.99 ± 999.00</p>
+      </div>
+      <h3>Three out of four predictions always come true</h3>
+    </div>
+    <script>
+      function printTimer() {
+        let m = Math.trunc(timeLeft/60);
+        if (m < 10) {
+          m = "0" + m
+        };
+        let s = timeLeft - Math.trunc(timeLeft/60) * 60;
+        if (s < 10) {
+          s = "0" + s
+        };
+        document.getElementById("timer").innerHTML = m + ":" + s;
+      }
+      function formatNumber(n) {
+        return n.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2,});
+      }
+      function countdown() {
+        timeLeft = timeLeft - 1;
+        if (timeLeft < 0) {
+          document.getElementById("forecast").style.display = "none";
+          clearInterval(nIntervId);
+          f();
+        } else {
+          printTimer();
+        }
+      }
+      async function f() {
+        try {
+          let kline = await fetch('https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=1');
+          if (kline.status != 200) {
+            throw new Error("Bitcoin kline - response " + kline.status);
+          }
+          let klineJson = await kline.json();
+          let timeOpen = Number(klineJson[0][0]);
+          let priceOpen = Number(klineJson[0][1]);
+          let futurePrice = priceOpen * 1.00014;
+          let deltaPrice = priceOpen * 1.00437 - futurePrice;
+          document.getElementById("price").innerHTML = formatNumber(futurePrice) + " ± " + formatNumber(deltaPrice);
+
+          let time = await fetch('https://data-api.binance.vision/api/v3/time');
+          if (time.status != 200) {
+            throw new Error("Server time - response " + time.status);
+          }
+          let timeJson = await time.json();
+          timeLeft = 3600 - Math.floor((timeJson.serverTime - timeOpen)/1000);
+          printTimer();
+
+          document.getElementById("forecast").style.display = "flex";
+          nIntervId = setInterval(countdown, 1000);
+
+        } catch(e) {
+          document.getElementById("msgHead").innerHTML = "Try again later";
+          document.getElementById("msgText").innerHTML = "The issue is on Binance's side.";
+          console.log(e.message);
+        }
+      }
+      let timeLeft = 0;
+      let nIntervId;
+      f();
+
+    </script>
+  </body>
+</html>
